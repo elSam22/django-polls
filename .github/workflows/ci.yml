@@ -1,18 +1,14 @@
-name: Django Polls CI/CD
+name: Django Polls CI
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   pull_request:
-    branches: [main]
+    branches: [master]
 
 jobs:
-  lint-test-docker:
+  lint-and-test:
     runs-on: ubuntu-latest
-
-    env:
-      AWS_REGION: us-east-1
-      ECR_REPOSITORY: django-polls
 
     steps:
       - name: Checkout code
@@ -21,36 +17,16 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: '3.12'
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install flake8 pytest -r requirements.txt
+          pip install -r requirements.txt
+          pip install flake8 pytest
 
       - name: Lint with flake8
         run: flake8 .
 
       - name: Run tests
         run: pytest
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to AWS ECR
-        uses: aws-actions/amazon-ecr-login@v2
-        with:
-          region: ${{ env.AWS_REGION }}
-          access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-
-      - name: Build Docker image
-        run: |
-          IMAGE_TAG=${{ github.sha }}
-          docker build -t ${{ env.ECR_REPOSITORY }}:$IMAGE_TAG .
-          docker tag ${{ env.ECR_REPOSITORY }}:$IMAGE_TAG ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:$IMAGE_TAG
-
-      - name: Push Docker image to ECR
-        run: |
-          IMAGE_TAG=${{ github.sha }}
-          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:$IMAGE_TAG
